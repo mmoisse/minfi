@@ -368,7 +368,8 @@ readGEORawFile <- function(filename,sep=",",
                             array = "IlluminaHumanMethylation450k",
                             annotation=.default.450k.annotation,
                             mergeManifest = FALSE,
-                            showProgress=TRUE){
+                            showProgress=TRUE,
+                            asMethylSet = FALSE){
 
     if (!requireNamespace("data.table", quietly = TRUE))
         stop("You need to install the data.table package from CRAN.")
@@ -445,6 +446,35 @@ readGEORawFile <- function(filename,sep=",",
                             pData = pData,
                             preprocessMethod = preprocessing,
                             annotation = c(array=array,annotation=annotation)))
+
+    if(!asMethylSet) {
+       return(GenomicMethylSet(gr = gr[ind2, ],
+                               Meth = mat[ind1, mindex],
+                               Unmeth = mat[ind1, uindex],
+                               pData = pData,
+                               preprocessMethod = preprocessing,
+                               annotation = c(array = array, annotation = annotation)))
+    } else {
+       Meth <- mat[ind1,mindex]
+       colnames(Meth) <- gsub(paste0(" ",Mname),"",colnames(Meth))
+       colnames(Meth) <- gsub(Mname,"",colnames(Meth))
+       mode(Meth) <- "numeric"
+
+       Unmeth <- mat[ind1,uindex]
+       colnames(Unmeth) <- gsub(paste0(" ",Uname),"",colnames(Unmeth))
+       colnames(Unmeth) <- gsub(Uname,"",colnames(Meth))
+       mode(Unmeth) <- "numeric"
+
+       out <- MethylSet(Meth = Meth, 
+                        Unmeth = Unmeth,
+                        phenoData = AnnotatedDataFrame(as.data.frame(pData)), 
+                        annotation = c(array = array, annotation = annotation))
+       out@preprocessMethod <- c(rg.norm = "Raw (no normalization or bg correction)",
+                                 minfi = as.character(packageVersion("minfi")), 
+                                 manifest = as.character(packageVersion("IlluminaHumanMethylation450kmanifest")))
+       return(out)
+    }
+
 }
 
 
